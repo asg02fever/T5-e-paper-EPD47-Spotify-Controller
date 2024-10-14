@@ -1,48 +1,47 @@
-📊 LilyGO T5 E-Paper Subscriber Counter
-Welcome to the LilyGO T5 E-Paper Subscriber Counter project! 🎉 This little gadget uses an e-paper display to keep track of your YouTube or social media subscribers in real-time 📈.
+🎶 LilyGO T5 E-Paper Spotify Controller
+Welcome to the LilyGO T5 E-Paper Spotify Controller project! 🎧 Control your Spotify playlist with style using a sleek e-paper display. No more looking for your phone or fiddling with apps — just pure, minimalistic music control 🎵.
 
 ✨ Features
-🖥️ Real-time Subscriber Count: Watch your subscriber number update on the e-paper display.
-🛠️ Simple Setup: Plug and play with minimal configuration.
-📦 Compact and Low Power: Perfect for a sleek desktop setup that uses very little power.
-🌐 WiFi Connectivity: Automatically pulls your latest subscriber count from the web.
+🖥️ E-Paper Display: View the current track, artist, and album on a crisp, low-power display.
+⏯️ Basic Playback Controls: Play, pause, skip, and rewind with ease.
+🔊 Volume Adjustment: Use buttons to adjust the volume right from the e-paper display!
+🌐 WiFi Integration: Connects to your Spotify account via WiFi and updates in real-time.
 📚 Requirements
-LilyGO T5 4.7" E-Paper Display 🖨️
+LilyGO T5 4.7" E-Paper Display 🎨
+Spotify Developer Account 🎧
 Arduino IDE ⚙️
 WiFi connection 🌐
-TouchDrvGT911 library 📚
-epd_driver library 📚
-firasans library 📚
-lilygo library 📚
 🚀 Getting Started
-Clone the repo: Start by cloning this repository to your local machine.
+Clone the repo: Get the code by cloning this repository to your local machine.
 
 bash
 Copier le code
-git clone https://github.com/yourusername/subscriber-counter.git
+git clone https://github.com/yourusername/spotify-controller.git
 Install the Libraries: You’ll need the following libraries:
 
 TouchDrvGT911 library 📚
 epd_driver library 📚
 firasans library 📚
 lilygo library 📚
-You can install these through the Arduino Library Manager.
+Install these using the Arduino Library Manager for an easy setup.
 
-Flash the Code: Open the project in Arduino IDE and flash the code to your LilyGO T5.
+Set Up Spotify Credentials: You’ll need to grab your Client ID and Secret from your Spotify Developer Dashboard.
 
-Connect to WiFi: The device will connect to WiFi and start displaying your subscriber count! Make sure to input your network credentials in the code.
+Flash the Code: Open the project in Arduino IDE and upload the code to your LilyGO T5.
+
+Connect to WiFi: Input your WiFi credentials in the code and let the magic happen! ✨
 
 🔧 Configuration
-You'll need to set up the following:
+You'll need to configure the following:
 
-API Key: Get an API key from the YouTube Data API or your chosen social media platform to fetch your subscriber count.
-WiFi Details: Set your SSID and password in the file.
+Spotify API Credentials: Add your Client ID, Secret, and a Redirect URI in the config.h file.
+WiFi Details: Add your network SSID and password in the code to get the controller connected.
 🎯 Goals
-Track Your Growth: Keep a constant eye on your channel's progress 🚀.
-Impress Your Friends: Show off this cool e-paper gadget at your workspace 🤓.
+Control Your Music Effortlessly: Switch songs and adjust volume without touching your phone or laptop 📱.
+Stay Minimalistic: Enjoy the simplicity of the e-paper display showing just the essentials 🎵.
 💡 Future Plans
-Add more customization options for the display 🖼️.
-Integrate with more platforms (Instagram, TikTok, etc.) 📱.
-Add a button to manually refresh the count 🕹️.
+Add album art display 📀.
+Integrate with more streaming services (Apple Music, Tidal, etc.) 🎶.
+Customize button functionality for personalized controls 🛠️.
 🤝 Contributing
-Contributions are welcome! Feel free to open an issue or submit a pull request to improve the project ✨.
+Contributions are always welcome! Feel free to open an issue or submit a pull request if you have ideas to improve the project 💡.
