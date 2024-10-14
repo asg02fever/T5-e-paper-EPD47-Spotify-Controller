@@ -1,0 +1,295 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include "TouchDrvGT911.hpp"
+#include "epd_driver.h"
+#include "firasans.h"
+#include "lilygo.h"
+
+//image integration
+#include "bg.h"
+
+HTTPClient https;
+String accessToken = "Replace with your Spotify access token"; // Replace with your Spotify access token
+bool isPlaying = false; // Track playback state
+WiFiClient *client;     // Assuming client is set up elsewhere
+
+
+// Spotify Credentials
+const char* client_id = "Replace with your Client ID";          // Replace with your Client ID
+const char* client_secret = "Replace with your Client Secre";  // Replace with your Client Secret
+const char* refresh_token = "Replace with your Refresh Token";  // Replace with your Refresh Token
+String access_token = "";  // This will be dynamically updated
+
+// Wi-Fi Credentials
+const char* ssid = "maemomo";
+const char* password = "momomaeva";
+
+// Touch driver and framebuffer
+TouchDrvGT911 touch;
+uint8_t* framebuffer = NULL;
+
+// Define button coordinates
+const int button_play_x = 400;
+const int button_play_y = 300;
+const int button_play_w = 150;
+const int button_play_h = 150;
+
+const int button_next_x = 560;
+const int button_next_y = 300;
+const int button_next_w = 150;
+const int button_next_h = 150;
+
+const int button_prev_x = 240;
+const int button_prev_y = 300;
+const int button_prev_w = 150;
+const int button_prev_h = 150;
+
+const int button_like_x = 240;
+const int button_like_y = 300;
+const int button_like_w = 150;
+const int button_like_h = 150;
+
+const int button_off_x = 240;
+const int button_off_y = 300;
+const int button_off_w = 150;
+const int button_off_h = 150;
+
+int16_t x, y;
+
+void connectToWiFi() {
+    Serial.print("Connecting to Wi-Fi...");
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println(" Connected!");
+}
+
+void refreshAccessToken() {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin("https://accounts.spotify.com/api/token");
+        http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+        String body = "grant_type=refresh_token&refresh_token=" + String(refresh_token) + 
+                      "&client_id=" + String(client_id) + "&client_secret=" + String(client_secret);
+        
+        int httpResponseCode = http.POST(body);
+        if (httpResponseCode > 0) {
+            String response = http.getString();
+            Serial.println(response);
+
+            // Parse the JSON response
+            DynamicJsonDocument doc(1024);
+            deserializeJson(doc, response);
+
+            // Get the access token
+            if (doc.containsKey("access_token")) {
+                access_token = doc["access_token"].as<String>();
+                Serial.println("Access token refreshed.");
+            } else {
+                Serial.println("Failed to get access token.");
+            }
+        } else {
+            Serial.println("Error refreshing access token.");
+        }
+        http.end();
+    } else {
+        Serial.println("Not connected to Wi-Fi.");
+    }
+}
+
+void spotifyNextTrack() {
+    if (WiFi.status() == WL_CONNECTED && !access_token.isEmpty()) {
+        HTTPClient http;
+        http.begin("https://api.spotify.com/v1/me/player/next");
+        http.addHeader("Authorization", "Bearer " + access_token);
+        int httpResponseCode = http.POST("");
+        if (httpResponseCode == 403) {  // Token expired or invalid
+            refreshAccessToken();
+            http.begin("https://api.spotify.com/v1/me/player/next");
+            http.addHeader("Authorization", "Bearer " + access_token);
+            httpResponseCode = http.POST("");  // Retry with new token
+        }
+        if (httpResponseCode > 0) {
+            Serial.println("Next track");
+        } else {
+            Serial.println("Failed to skip track");
+        }
+        http.end();
+    }
+}
+
+void spotifyPlayPause() {
+    if (WiFi.status() == WL_CONNECTED && !access_token.isEmpty()) {
+        HTTPClient http;
+        http.begin("https://api.spotify.com/v1/me/player/play");
+        http.addHeader("Authorization", "Bearer " + access_token);
+        int httpResponseCode = http.PUT("");
+        if (httpResponseCode == 403) {  // Token expired or invalid
+            refreshAccessToken();
+            http.begin("https://api.spotify.com/v1/me/player/play");
+            http.addHeader("Authorization", "Bearer " + access_token);
+            httpResponseCode = http.PUT("");  // Retry with new token
+        }
+        if (httpResponseCode > 0) {
+            Serial.println("Playback toggled");
+        } else {
+            Serial.println("Failed to toggle playback");
+        }
+        http.end();
+    }
+}
+
+void edpoff() {
+        epd_poweroff();
+
+}
+
+void spolike() {
+        Serial.println("track liked");
+
+}
+
+void spotifyPreviousTrack() {
+    if (WiFi.status() == WL_CONNECTED && !access_token.isEmpty()) {
+        HTTPClient http;
+        http.begin("https://api.spotify.com/v1/me/player/previous");
+        http.addHeader("Authorization", "Bearer " + access_token);
+        int httpResponseCode = http.POST("");
+        if (httpResponseCode == 403) {  // Token expired or invalid
+            refreshAccessToken();
+            http.begin("https://api.spotify.com/v1/me/player/previous");
+            http.addHeader("Authorization", "Bearer " + access_token);
+            httpResponseCode = http.POST("");  // Retry with new token
+        }
+        if (httpResponseCode > 0) {
+            Serial.println("Previous track");
+        } else {
+            Serial.println("Failed to go back");
+        }
+        http.end();
+    }
+}
+
+
+void drawUI() {
+    // Clear framebuffer
+    memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
+    
+    // Power on the e-paper display
+    epd_poweron();
+    
+    // Clear the display
+    epd_clear();
+    
+    Rect_t area1 = {
+        .x = 0,
+        .y = 0,
+        .width = pic1_width,
+        .height = pic1_height
+    };
+   
+    epd_draw_grayscale_image(area1, (uint8_t *)pic1_data);
+
+    // Draw text placeholders for track information
+    //int cursor_x = 45;
+    //int cursor_y = 20;
+    //writeln((GFXfont *)&FiraSans, "Track Title", &cursor_x, &cursor_y, framebuffer);
+    //cursor_y += 35;
+    //writeln((GFXfont *)&FiraSans, "Artist Name", &cursor_x, &cursor_y, framebuffer);
+    
+    // Draw the framebuffer to the e-paper display
+    epd_draw_grayscale_image(epd_full_screen(), framebuffer);
+    
+    // Power off the e-paper display
+    epd_poweroff();
+}
+
+
+
+
+
+void setup() {
+    Serial.begin(115200);
+    connectToWiFi();
+    refreshAccessToken();  // Get initial access token
+
+    // Initialize touch
+    Wire.begin(BOARD_SDA, BOARD_SCL);
+    pinMode(TOUCH_INT, OUTPUT);
+    digitalWrite(TOUCH_INT, HIGH);
+
+    uint8_t touchAddress = 0x5D; // GT911 default address
+    touch.setPins(-1, TOUCH_INT);
+    if (!touch.begin(Wire, touchAddress, BOARD_SDA, BOARD_SCL)) {
+        Serial.println("Failed to find GT911 - check your wiring!");
+        while (1) {
+            delay(1000);
+        }
+    }
+    touch.setMaxCoordinates(EPD_WIDTH, EPD_HEIGHT);
+    touch.setSwapXY(true);
+    touch.setMirrorXY(false, true);
+
+    // Initialize framebuffer
+    framebuffer = (uint8_t*)ps_calloc(sizeof(uint8_t), EPD_WIDTH * EPD_HEIGHT / 2);
+    if (!framebuffer) {
+        Serial.println("alloc memory failed !!!");
+        while (1);
+    }
+    memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
+
+    epd_init();
+    epd_poweron();
+
+    Serial.println("Started Touchscreen poll...");
+
+    drawUI();  // Initialize the display with the UI
+}
+unsigned long lastTouchTime = 0;
+const unsigned long debounceDelay = 200;  // Debounce delay in milliseconds
+
+void loop() {
+    unsigned long currentTime = millis();
+    uint8_t touched = touch.getPoint(&x, &y);
+    
+    if (touched && (currentTime - lastTouchTime > debounceDelay)) {
+        lastTouchTime = currentTime;
+
+        // Check for play/pause button
+        if (x > button_play_x && x < button_play_x + button_play_w && y > button_play_y && y < button_play_y + button_play_h) {
+            Serial.println("Play/Pause button touched");
+            spotifyPlayPause();
+        }
+
+        // Check for next button
+        else if (x > button_next_x && x < button_next_x + button_next_w && y > button_next_y && y < button_next_y + button_next_h) {
+            Serial.println("Next button touched");
+            spotifyNextTrack();
+        }
+
+        // Check for previous button
+        else if (x > button_prev_x && x < button_prev_x + button_prev_w && y > button_prev_y && y < button_prev_y + button_prev_h) {
+            Serial.println("Previous button touched");
+            spotifyPreviousTrack();
+        }
+       
+        else if (x > button_off_x && x < button_off_x + button_off_w && y > button_off_y && y < button_off_y + button_off_h) {
+            Serial.println("Power off button touched");
+            edpoff();
+        }
+
+        else if (x > button_like_x && x < button_like_x + button_like_w && y > button_like_y && y < button_like_y + button_like_h) {
+            Serial.println("Power off button touched");
+            spolike();
+        }
+
+        // Redraw UI after button press
+        drawUI();
+    }
+
+    delay(100);  // Adjust delay as needed
+}
